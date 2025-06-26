@@ -1,0 +1,14 @@
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.1.0
+  provider: ^6.0.5
+  image_picker: ^1.0.4
+  # Para guardar el token de autenticación
+  shared_preferences: ^2.2.2
+  device_info_plus: ^9.1.1 # Para obtener el ID del dispositivo
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+
