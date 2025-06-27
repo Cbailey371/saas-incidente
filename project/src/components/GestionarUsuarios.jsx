@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { dataService } from '../services/dataService';
 import RegistrarUsuarioForm from './RegistrarUsuarioForm'; // Reutilizamos el formulario de registro
 import Pagination from './Pagination'; // Reutilizamos el componente de paginación
-
-const MOCK_ADMIN_EMPRESA_TOKEN = 'tu_jwt_de_admin_empresa_aqui'; // ¡Reemplaza esto!
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 
 const GestionarUsuarios = () => {
   const [usuarios, setUsuarios] = useState([]);
@@ -19,28 +19,31 @@ const GestionarUsuarios = () => {
     rol: '',
     activo: true,
   });
+  const { isAuthenticated } = useAuth();
 
-  const fetchUsuarios = async () => {
+  const fetchUsuarios = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await dataService.getUsuariosPorEmpresa(pagination.currentPage, MOCK_ADMIN_EMPRESA_TOKEN);
+      const data = await dataService.getUsuariosPorEmpresa(pagination.currentPage);
       setUsuarios(data.usuarios);
       setPagination({
         currentPage: data.currentPage,
         totalPages: data.totalPages,
       });
     } catch (err) {
-      setError('No se pudieron cargar los usuarios. Por favor, intente más tarde.');
+      toast.error('No se pudieron cargar los usuarios.');
       console.error(err);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [pagination.currentPage]);
 
   useEffect(() => {
-    fetchUsuarios();
-  }, [pagination.currentPage]);
+    if (isAuthenticated) {
+      fetchUsuarios();
+    }
+  }, [isAuthenticated, fetchUsuarios]);
 
   const handleUsuarioRegistrado = (nuevoUsuario) => {
     // Opcional: añadir el nuevo usuario a la lista o simplemente recargar
@@ -84,13 +87,13 @@ const GestionarUsuarios = () => {
 
     setIsLoading(true);
     try {
-      const response = await dataService.updateUsuario(editingUser.id, editFormData, MOCK_ADMIN_EMPRESA_TOKEN);
-      alert(response.message);
+      const response = await dataService.updateUsuario(editingUser.id, editFormData);
+      toast.success(response.message);
       fetchUsuarios(); // Recargar la lista para ver los cambios
       handleCancelEdit();
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Error al actualizar el usuario.';
-      alert(errorMessage);
+      toast.error(errorMessage);
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -104,12 +107,12 @@ const GestionarUsuarios = () => {
 
     setIsLoading(true);
     try {
-      const response = await dataService.toggleUsuarioActivo(usuario.id, MOCK_ADMIN_EMPRESA_TOKEN);
-      alert(response.message);
+      const response = await dataService.toggleUsuarioActivo(usuario.id);
+      toast.success(response.message);
       fetchUsuarios(); // Recargar la lista para ver los cambios
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Error al cambiar el estado del usuario.';
-      alert(errorMessage);
+      toast.error(errorMessage);
       console.error(err);
     } finally {
       setIsLoading(false);

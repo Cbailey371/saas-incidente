@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { dataService } from '../services/dataService';
 import CrearTipoIncidenteForm from './CrearTipoIncidenteForm'; // Reutilizamos el formulario de creación
+import { useAuth } from '../context/AuthContext'; // 1. Importar el hook
+import { toast } from 'react-toastify';
+import { confirmToast } from '../utils/toastHelper';
 
-const MOCK_ADMIN_EMPRESA_TOKEN = 'tu_jwt_de_admin_empresa_aqui'; // ¡Reemplaza esto!
+// const MOCK_ADMIN_EMPRESA_TOKEN = 'tu_jwt_de_admin_empresa_aqui'; // ¡Ya no se necesita!
 
 const GestionarTiposIncidente = () => {
   const [tiposIncidente, setTiposIncidente] = useState([]);
@@ -10,12 +13,13 @@ const GestionarTiposIncidente = () => {
   const [error, setError] = useState(null);
   const [editingTipo, setEditingTipo] = useState(null); // null o el objeto del tipo que se está editando
   const [editNombre, setEditNombre] = useState('');
+  const { isAuthenticated } = useAuth(); // 2. Obtener el estado de autenticación
 
-  const fetchTiposIncidente = async () => {
+  const fetchTiposIncidente = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const fetchedTipos = await dataService.getTiposIncidente(MOCK_ADMIN_EMPRESA_TOKEN);
+      const fetchedTipos = await dataService.getTiposIncidente();
       setTiposIncidente(fetchedTipos);
     } catch (err) {
       setError('No se pudieron cargar los tipos de incidente. Por favor, intente más tarde.');
@@ -23,11 +27,13 @@ const GestionarTiposIncidente = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchTiposIncidente();
-  }, []);
+    if (isAuthenticated) { // Solo buscar datos si el usuario está autenticado
+      fetchTiposIncidente();
+    }
+  }, [isAuthenticated, fetchTiposIncidente]); // 3. Re-ejecutar si el estado de autenticación o la función cambian
 
   const handleTipoCreado = (nuevoTipo) => {
     // Añadir el nuevo tipo a la lista y refrescar
@@ -49,7 +55,7 @@ const GestionarTiposIncidente = () => {
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     if (!editNombre.trim()) {
-      alert('El nombre no puede estar vacío.');
+      toast.warn('El nombre no puede estar vacío.');
       return;
     }
     if (editingTipo && editNombre === editingTipo.nombre) {
@@ -59,13 +65,13 @@ const GestionarTiposIncidente = () => {
 
     setIsLoading(true);
     try {
-      const response = await dataService.updateTipoIncidente(editingTipo.id, editNombre, MOCK_ADMIN_EMPRESA_TOKEN);
-      alert(response.message);
+      const response = await dataService.updateTipoIncidente(editingTipo.id, editNombre);
+      toast.success(response.message);
       fetchTiposIncidente(); // Recargar la lista para ver los cambios
       handleCancelEdit();
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Error al actualizar el tipo de incidente.';
-      alert(errorMessage);
+      toast.error(errorMessage);
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -73,23 +79,29 @@ const GestionarTiposIncidente = () => {
   };
 
   const handleToggleActivo = async (tipo) => {
-    if (!window.confirm(`¿Está seguro de que desea ${tipo.activo ? 'desactivar' : 'activar'} el tipo "${tipo.nombre}"?`)) {
-      return;
-    }
-
-    setIsLoading(true);
     try {
-      const response = await dataService.toggleTipoIncidenteActivo(tipo.id, MOCK_ADMIN_EMPRESA_TOKEN);
-      alert(response.message);
+      await confirmToast(`¿Está seguro de que desea ${tipo.activo ? 'desactivar' : 'activar'} el tipo "${tipo.nombre}"?`);
+
+      // Si el usuario confirma, el código continúa. Si cancela, la promesa rechaza y salta al catch.
+      setIsLoading(true);
+      const response = await dataService.toggleTipoIncidenteActivo(tipo.id);
+      toast.success(response.message);
       fetchTiposIncidente(); // Recargar la lista para ver los cambios
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Error al cambiar el estado del tipo de incidente.';
-      alert(errorMessage);
-      console.error(err);
+      // Si el error es por cancelación del usuario, no mostramos un toast de error.
+      if (err.message !== 'Acción cancelada por el usuario.') {
+        const errorMessage = err.response?.data?.message || 'Error al cambiar el estado del tipo de incidente.';
+        toast.error(errorMessage);
+        console.error(err);
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (!isAuthenticated) {
+    return <div style={{ textAlign: 'center', padding: '50px' }}>Por favor, inicie sesión para gestionar los tipos de incidente.</div>;
+  }
 
   if (isLoading && !tiposIncidente.length) { // Mostrar cargando solo al inicio o si no hay datos
     return <div style={{ textAlign: 'center', padding: '50px' }}>Cargando tipos de incidente...</div>;

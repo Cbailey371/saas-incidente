@@ -17,7 +17,7 @@ exports.registrarUsuario = async (req, res) => {
     }
 
     // 2. Verificar si el email ya está en uso
-    const usuarioExistente = await Usuario.findOne({ where: { email } });
+    const usuarioExistente = await Usuario.findOne({ where: { email, empresaId } });
     if (usuarioExistente) {
       return res.status(409).json({ message: 'El email ya está registrado.' });
     }

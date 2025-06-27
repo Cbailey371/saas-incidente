@@ -101,7 +101,7 @@ exports.assignAgentToDevice = async (req, res) => {
 
       // 2.2. Verificar si el agente ya está asignado a otro dispositivo
       const dispositivoYaAsignado = await Dispositivo.findOne({
-        where: { usuarioId, id: { [sequelize.Op.ne]: dispositivoId } },
+        where: { usuarioId, empresaId, id: { [sequelize.Op.ne]: dispositivoId } },
         transaction: t,
       });
 
@@ -136,8 +136,14 @@ exports.listarDispositivosPorEmpresa = async (req, res) => {
   try {
     const dispositivos = await Dispositivo.findAll({
       where: { empresaId },
-      attributes: ['id', 'nombre', 'identificadorUnico'], // Solo los datos necesarios
+      attributes: ['id', 'nombre', 'identificadorUnico', 'usuarioId'],
       order: [['nombre', 'ASC']],
+      include: [{
+        model: Usuario,
+        as: 'Usuario',
+        attributes: ['email'],
+        required: false
+      }]
     });
 
     res.status(200).json(dispositivos);

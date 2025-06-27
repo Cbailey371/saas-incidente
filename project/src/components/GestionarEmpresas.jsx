@@ -1,31 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { adminService } from '../services/adminService';
-
-// En una aplicación real, el token vendría de un Contexto de Autenticación.
-const MOCK_ADMIN_GLOBAL_TOKEN = 'tu_jwt_de_admin_global_aqui'; // ¡Reemplaza esto!
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 
 const GestionarEmpresas = () => {
   const [empresas, setEmpresas] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { isAuthenticated, user } = useAuth();
 
-  const fetchEmpresas = async () => {
+  const fetchEmpresas = useCallback(async () => {
+    if (user?.rol !== 'admin_global') {
+      setError('Acceso denegado. Esta vista es solo para administradores globales.');
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
-      const fetchedEmpresas = await adminService.getEmpresas(MOCK_ADMIN_GLOBAL_TOKEN);
+      const fetchedEmpresas = await adminService.getEmpresas();
       setEmpresas(fetchedEmpresas);
     } catch (err) {
-      setError('No se pudieron cargar las empresas. Por favor, intente más tarde.');
+      toast.error('No se pudieron cargar las empresas.');
       console.error(err);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.rol]);
 
   useEffect(() => {
-    fetchEmpresas();
-  }, []);
+    if (isAuthenticated) {
+      fetchEmpresas();
+    }
+  }, [isAuthenticated, fetchEmpresas]);
 
   const handleToggleActiva = async (empresa) => {
     if (!window.confirm(`¿Está seguro de que desea ${empresa.activa ? 'desactivar' : 'activar'} la empresa "${empresa.nombre}"? Esto afectará a todos sus usuarios y licencias.`)) {
@@ -34,12 +41,12 @@ const GestionarEmpresas = () => {
 
     setIsLoading(true);
     try {
-      const response = await adminService.toggleEmpresaActiva(empresa.id, MOCK_ADMIN_GLOBAL_TOKEN);
-      alert(response.message);
+      const response = await adminService.toggleEmpresaActiva(empresa.id);
+      toast.success(response.message);
       fetchEmpresas(); // Recargar la lista para ver los cambios
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Error al cambiar el estado de la empresa.';
-      alert(errorMessage);
+      toast.error(errorMessage);
       console.error(err);
     } finally {
       setIsLoading(false);

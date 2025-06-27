@@ -1,19 +1,16 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3001/api/v1/incidentes';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001/api/v1';
+const API_URL = `${API_BASE_URL}/incidentes`;
 
 /**
  * Obtiene una lista paginada de incidentes para la empresa del usuario.
  * @param {number} page - El número de página a solicitar.
  * @param {object} filters - Objeto con los filtros (startDate, endDate, tipoIncidenteId, dispositivoId).
- * @param {string} token - El JWT del administrador de la empresa.
  * @returns {Promise<object>} La respuesta del servidor con los incidentes y datos de paginación.
  */
-const getIncidentes = async (page = 1, filters = {}, token) => {
+const getIncidentes = async (page = 1, filters = {}) => {
   const config = {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
     params: {
       page,
       limit: 10, // Solicitamos 10 incidentes por página
@@ -27,12 +24,10 @@ const getIncidentes = async (page = 1, filters = {}, token) => {
 /**
  * Llama al endpoint para exportar incidentes a CSV.
  * @param {object} filters - Objeto con los filtros (startDate, endDate, tipoIncidenteId, dispositivoId).
- * @param {string} token - El JWT del administrador de la empresa.
  * @returns {Promise<Blob>} El archivo CSV como un Blob.
  */
-const exportIncidentes = async (filters = {}, token) => {
+const exportIncidentes = async (filters = {}) => {
   const config = {
-    headers: { Authorization: `Bearer ${token}` },
     params: filters,
     responseType: 'blob', // Importante para recibir el archivo como Blob
   };

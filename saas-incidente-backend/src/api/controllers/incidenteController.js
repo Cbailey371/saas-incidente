@@ -2,6 +2,32 @@ const { validationResult } = require('express-validator');
 const { Incidente, ArchivoMultimedia, Dispositivo, TipoIncidente, Usuario, sequelize } = require('../../models');
 const { stringify } = require('csv-stringify'); // Importar la librería para CSV
 
+// Helper para construir la cláusula WHERE para filtros de incidentes
+const buildIncidenteWhereClause = (empresaId, queryParams) => {
+  const {
+    startDate,
+    endDate,
+    tipoIncidenteId,
+    dispositivoId,
+  } = queryParams;
+
+  const whereClause = { empresaId };
+
+  if (startDate) {
+    whereClause.fecha = { ...whereClause.fecha, [sequelize.Op.gte]: new Date(startDate) };
+  }
+  if (endDate) {
+    whereClause.fecha = { ...whereClause.fecha, [sequelize.Op.lte]: new Date(endDate) };
+  }
+  if (tipoIncidenteId) {
+    whereClause.tipoIncidenteId = tipoIncidenteId;
+  }
+  if (dispositivoId) {
+    whereClause.dispositivoId = dispositivoId;
+  }
+  return whereClause;
+};
+
 exports.crearIncidente = async (req, res) => {
   // El archivo ya fue procesado por multer y está en req.file
   // Los campos de texto están en req.body
@@ -76,29 +102,7 @@ exports.crearIncidente = async (req, res) => {
 
 exports.exportarIncidentesPorEmpresa = async (req, res) => {
   const { empresaId } = req.user;
-
-  // Parámetros de filtro (los mismos que para listar)
-  const {
-    startDate,
-    endDate,
-    tipoIncidenteId,
-    dispositivoId,
-  } = req.query;
-
-  const whereClause = { empresaId };
-
-  if (startDate) {
-    whereClause.fecha = { ...whereClause.fecha, [sequelize.Op.gte]: new Date(startDate) };
-  }
-  if (endDate) {
-    whereClause.fecha = { ...whereClause.fecha, [sequelize.Op.lte]: new Date(endDate) };
-  }
-  if (tipoIncidenteId) {
-    whereClause.tipoIncidenteId = tipoIncidenteId;
-  }
-  if (dispositivoId) {
-    whereClause.dispositivoId = dispositivoId;
-  }
+  const whereClause = buildIncidenteWhereClause(empresaId, req.query);
 
   try {
     const incidentes = await Incidente.findAll({
@@ -152,29 +156,7 @@ exports.exportarIncidentesPorEmpresa = async (req, res) => {
 
 exports.listarIncidentesPorEmpresa = async (req, res) => {
   const { empresaId } = req.user;
-
-  // Parámetros de filtro
-  const {
-    startDate,
-    endDate,
-    tipoIncidenteId,
-    dispositivoId,
-  } = req.query;
-
-  const whereClause = { empresaId };
-
-  if (startDate) {
-    whereClause.fecha = { ...whereClause.fecha, [sequelize.Op.gte]: new Date(startDate) };
-  }
-  if (endDate) {
-    whereClause.fecha = { ...whereClause.fecha, [sequelize.Op.lte]: new Date(endDate) };
-  }
-  if (tipoIncidenteId) {
-    whereClause.tipoIncidenteId = tipoIncidenteId;
-  }
-  if (dispositivoId) {
-    whereClause.dispositivoId = dispositivoId;
-  }
+  const whereClause = buildIncidenteWhereClause(empresaId, req.query);
 
   // Paginación
   const page = parseInt(req.query.page, 10) || 1;
@@ -183,8 +165,7 @@ exports.listarIncidentesPorEmpresa = async (req, res) => {
 
   try {
     const { count, rows } = await Incidente.findAndCountAll({
-      where: { empresaId },
-      where: whereClause, // Aplicar los filtros aquí
+      where: whereClause,
       limit, // Límite de paginación
       offset,
       order: [['fecha', 'DESC']], // Ordenar por los más recientes primero

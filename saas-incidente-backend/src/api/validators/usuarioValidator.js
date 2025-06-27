@@ -1,39 +1,24 @@
-const { body } = require('express-validator');
+const { body, param } = require('express-validator');
 
 exports.registrarUsuarioRules = () => {
   return [
-    body('email')
-      .isEmail().withMessage('Debe proporcionar un email válido.')
-      .normalizeEmail(),
-
-    body('password')
-      .isLength({ min: 8 }).withMessage('La contraseña debe tener al menos 8 caracteres.')
-      .matches(/\d/).withMessage('La contraseña debe contener al menos un número.'),
-
-    body('rol')
-      .isIn(['agente', 'admin_empresa']).withMessage('El rol no es válido. Debe ser "agente" o "admin_empresa".'),
-
-    // Opcional: Validar que el rol sea 'agente' si se requiere un dispositivoId
-    // body('dispositivoId')
-    //   .optional() // Es opcional para el registro inicial
-    //   .isUUID(4).withMessage('El ID del dispositivo no es válido.'),
+    body('email', 'Por favor, introduce un email válido.').isEmail().normalizeEmail(),
+    body('password', 'La contraseña debe tener al menos 6 caracteres.').isLength({ min: 6 }),
+    body('rol', 'El rol es inválido.').isIn(['admin_empresa', 'agente']),
   ];
 };
 
 exports.updateUsuarioRules = () => {
   return [
-    body('email')
-      .isEmail().withMessage('Debe proporcionar un email válido.')
-      .normalizeEmail(),
-    body('rol')
-      .isIn(['agente', 'admin_empresa']).withMessage('El rol no es válido. Debe ser "agente" o "admin_empresa".'),
-    body('activo')
-      .isBoolean().withMessage('El estado activo debe ser un booleano.'),
+    param('id', 'El ID de usuario es inválido.').isUUID(),
+    body('email', 'Por favor, introduce un email válido.').isEmail().normalizeEmail(),
+    body('rol', 'El rol es inválido.').isIn(['admin_empresa', 'agente']),
+    body('activo', 'El estado activo debe ser un booleano.').isBoolean(),
   ];
 };
 
-exports.idParamRules = () => {
-  return [
-    param('id').isUUID(4).withMessage('El ID del usuario no es válido.'),
-  ];
+exports.toggleUsuarioActivoRules = () => {
+    return [
+        param('id', 'El ID de usuario es inválido.').isUUID(),
+    ];
 };

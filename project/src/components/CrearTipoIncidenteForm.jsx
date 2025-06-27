@@ -1,26 +1,23 @@
 import React, { useState } from 'react';
 import { dataService } from '../services/dataService';
-
-const MOCK_ADMIN_EMPRESA_TOKEN = 'tu_jwt_de_admin_empresa_aqui'; // ¡Reemplaza esto!
+import { toast } from 'react-toastify';
 
 const CrearTipoIncidenteForm = ({ onTipoCreado }) => {
   const [nombre, setNombre] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nombre.trim()) {
-      setMessage({ type: 'error', text: 'El nombre no puede estar vacío.' });
+      toast.warn('El nombre no puede estar vacío.');
       return;
     }
 
     setIsLoading(true);
-    setMessage({ type: '', text: '' });
 
     try {
-      const response = await dataService.createTipoIncidente(nombre, MOCK_ADMIN_EMPRESA_TOKEN);
-      setMessage({ type: 'success', text: response.message });
+      const response = await dataService.createTipoIncidente(nombre);
+      toast.success(response.message);
       setNombre(''); // Limpiar el input en caso de éxito
 
       // Notificar al componente padre que un nuevo tipo fue creado, para refrescar la lista.
@@ -29,7 +26,7 @@ const CrearTipoIncidenteForm = ({ onTipoCreado }) => {
       }
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Ocurrió un error inesperado.';
-      setMessage({ type: 'error', text: errorMessage });
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -55,17 +52,6 @@ const CrearTipoIncidenteForm = ({ onTipoCreado }) => {
           {isLoading ? 'Creando...' : 'Crear Tipo'}
         </button>
       </form>
-      {message.text && (
-        <div style={{
-          marginTop: '15px',
-          padding: '10px',
-          color: message.type === 'error' ? '#D8000C' : '#4F8A10',
-          backgroundColor: message.type === 'error' ? '#FFD2D2' : '#DFF2BF',
-          borderRadius: '4px'
-        }}>
-          {message.text}
-        </div>
-      )}
     </div>
   );
 };

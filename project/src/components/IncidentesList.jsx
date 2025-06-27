@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { incidenteService } from '../services/incidenteService';
 import { dataService } from '../services/dataService'; // Importar el nuevo servicio
 import Pagination from './Pagination';
+import { useAuth } from '../context/AuthContext'; // 1. Importar el hook
+import { toast } from 'react-toastify';
 
-// En una aplicación real, el token vendría de un Contexto de Autenticación.
-// const { token } = useAuth();
-const MOCK_ADMIN_EMPRESA_TOKEN = 'tu_jwt_de_admin_empresa_aqui'; // ¡Reemplaza esto!
+// const MOCK_ADMIN_EMPRESA_TOKEN = 'tu_jwt_de_admin_empresa_aqui'; // ¡Ya no se necesita!
 
 // Helper para formatear fechas a YYYY-MM-DD para inputs de tipo date
 const formatDateForInput = (date) => {
@@ -30,51 +30,56 @@ const IncidentesList = () => {
   });
   const [tiposIncidente, setTiposIncidente] = useState([]);
   const [dispositivos, setDispositivos] = useState([]);
+  const { isAuthenticated } = useAuth(); // 2. Obtener el estado de autenticación
+
+  const fetchFilterData = useCallback(async () => {
+    try {
+      const [fetchedTipos, fetchedDispositivos] = await Promise.all([
+        dataService.getTiposIncidente(),
+        dataService.getDispositivos(),
+      ]);
+      setTiposIncidente(fetchedTipos);
+      setDispositivos(fetchedDispositivos);
+    } catch (err) {
+      console.error('Error al cargar datos para filtros:', err);
+      toast.error('Error al cargar datos para los filtros.');
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchFilterData = async () => {
-      try {
-        const fetchedTipos = await dataService.getTiposIncidente(MOCK_ADMIN_EMPRESA_TOKEN);
-        setTiposIncidente(fetchedTipos);
-        const fetchedDispositivos = await dataService.getDispositivos(MOCK_ADMIN_EMPRESA_TOKEN);
-        setDispositivos(fetchedDispositivos);
-      } catch (err) {
-        console.error('Error al cargar datos para filtros:', err);
-        // Podrías establecer un mensaje de error específico para esto
-      }
-    };
-    fetchFilterData();
-  }, []); // Se ejecuta solo una vez al montar el componente
+    if (isAuthenticated) {
+      fetchFilterData();
+    }
+  }, [isAuthenticated, fetchFilterData]);
+
+  const fetchIncidentes = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await incidenteService.getIncidentes(pagination.currentPage, filters);
+      setIncidentes(data.incidentes);
+      setPagination({
+        currentPage: data.currentPage,
+        totalPages: data.totalPages,
+      });
+    } catch (err) {
+      toast.error('No se pudieron cargar los incidentes.');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [pagination.currentPage, filters]);
 
   useEffect(() => {
-    // Convertir fechas a formato ISO para el backend si existen
-    const formattedFilters = { ...filters };
+    if (isAuthenticated) {
+      // Pequeño retraso para evitar múltiples llamadas rápidas al cambiar filtros
+      const handler = setTimeout(() => {
+        fetchIncidentes();
+      }, 300); // 300ms de debounce
 
-    const fetchIncidentes = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const data = await incidenteService.getIncidentes(pagination.currentPage, formattedFilters, MOCK_ADMIN_EMPRESA_TOKEN);
-        setIncidentes(data.incidentes);
-        setPagination({
-          currentPage: data.currentPage,
-          totalPages: data.totalPages,
-        });
-      } catch (err) {
-        setError('No se pudieron cargar los incidentes. Por favor, intente más tarde.');
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    // Pequeño retraso para evitar múltiples llamadas rápidas al cambiar filtros
-    const handler = setTimeout(() => {
-      fetchIncidentes();
-    }, 300); // 300ms de debounce
-
-    return () => clearTimeout(handler); // Limpiar el timeout si el componente se desmonta o los filtros cambian de nuevo
-  }, [pagination.currentPage, filters]); // Se ejecuta cada vez que cambia la página actual o los filtros
+      return () => clearTimeout(handler); // Limpiar el timeout si el componente se desmonta o los filtros cambian de nuevo
+    }
+  }, [isAuthenticated, fetchIncidentes]);
 
   const handlePageChange = (page) => {
     if (page > 0 && page <= pagination.totalPages) {
@@ -89,6 +94,10 @@ const IncidentesList = () => {
       [name]: value,
     }));
   };
+
+  if (!isAuthenticated) {
+    return <div style={{ textAlign: 'center', padding: '50px' }}>Por favor, inicie sesión para ver los incidentes.</div>;
+  }
 
   if (isLoading) {
     return <div style={{ textAlign: 'center', padding: '50px' }}>Cargando incidentes...</div>;
@@ -167,7 +176,7 @@ const IncidentesList = () => {
           onClick={async () => {
             setIsLoading(true);
             try {
-              const csvBlob = await incidenteService.exportIncidentes(filters, MOCK_ADMIN_EMPRESA_TOKEN);
+              const csvBlob = await incidenteService.exportIncidentes(filters);
               const url = window.URL.createObjectURL(new Blob([csvBlob]));
               const link = document.createElement('a');
               link.href = url;
@@ -177,7 +186,7 @@ const IncidentesList = () => {
               link.parentNode.removeChild(link);
               window.URL.revokeObjectURL(url);
             } catch (err) {
-              alert('Error al exportar el reporte. Por favor, intente más tarde.');
+              toast.error('Error al exportar el reporte. Por favor, intente más tarde.');
               console.error('Error al exportar:', err);
             } finally {
               setIsLoading(false);

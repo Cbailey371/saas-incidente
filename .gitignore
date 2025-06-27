@@ -1,40 +1,20 @@
-# Archivos y carpetas comunes a todo el proyecto
-*.log
-*.tmp
+# Dependencias de Node.js
+node_modules/
+
+# Archivos de entorno
 .env
-.DS_Store
-.idea/
-.vscode/
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-.git/
 
-# Ignorar dependencias y builds en carpetas específicas
-
-# --- Frontend: React ---
-project/node_modules/
-project/build/
-project/dist/
-project/package-lock.json
-
-# --- Backend: Node.js ---
-saas-incidente-backend/node_modules/
-saas-incidente-backend/package-lock.json
-
-# --- Flutter App ---
-mobile_app/.dart_tool/
-mobile_app/.packages
-mobile_app/.flutter-plugins
-mobile_app/.flutter-plugins-dependencies
-mobile_app/pubspec.lock
-mobile_app/build/
-mobile_app/.idea/
-mobile_app/.vscode/
-mobile_app/.metadata
-
-# --- Logs y otras salidas ---
-logs/
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Archivos de caché del editor y del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Carpeta de build del frontend
+project/build/
+
+# Archivos de caché de babel
+project/node_modules/.cache/

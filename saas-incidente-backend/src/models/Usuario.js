@@ -1,7 +1,6 @@
-const { DataTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
 
-module.exports = (sequelize) => {
+module.exports = (sequelize, DataTypes) => {
   const Usuario = sequelize.define('Usuario', {
     id: {
       type: DataTypes.UUID,
@@ -29,6 +28,17 @@ module.exports = (sequelize) => {
       defaultValue: true,
       allowNull: false,
     },
+    // Nueva columna para asociar el usuario a una empresa
+    empresaId: {
+      type: DataTypes.UUID,
+      allowNull: true, // Permite NULL para roles como 'admin_global'
+      references: {
+        model: 'Empresas', // Asegúrate de que 'Empresas' sea el nombre de la tabla de tu modelo Empresa
+        key: 'id',
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL', // Si la empresa se elimina, el usuario queda sin empresa (o puedes usar CASCADE si prefieres eliminar el usuario)
+    },
   });
 
   // Hook para hashear la contraseña antes de guardar
@@ -39,6 +49,15 @@ module.exports = (sequelize) => {
   // Método para comparar contraseñas
   Usuario.prototype.comparePassword = async function (candidatePassword) {
     return bcrypt.compare(candidatePassword, this.password);
+  };
+
+  Usuario.associate = (models) => {
+    // Un usuario puede pertenecer a una empresa
+    Usuario.belongsTo(models.Empresa, { foreignKey: 'empresaId' });
+    // Un usuario (agente) puede tener muchos dispositivos asignados
+    Usuario.hasMany(models.Dispositivo, { foreignKey: 'usuarioId', as: 'dispositivos' });
+    // Un usuario (agente) puede crear muchos incidentes
+    Usuario.hasMany(models.Incidente, { foreignKey: 'usuarioId', as: 'incidentes' });
   };
 
   return Usuario;
